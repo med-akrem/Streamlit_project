@@ -4,6 +4,8 @@ import numpy as np
 import plotly.express as px 
 import pickle
 
+st.set_page_config(page_title="Diabet Protiction App " ,page_icon="💉")
+
 #page title 
 st.title("welcome to my web app ")
 #name=st.text_input("enter you name")
@@ -99,11 +101,18 @@ if page == "🏠 Home":
 
             fig_hist = px.histogram(df,x=hist_col,nbins=bins, title=f"Histogram of {hist_col}")
             st.plotly_chart(fig_hist)
+        
+        
+        
 elif page == "🧠 Model":
  
     st.title("model  Page")
     st.title("🩺 Diabetes Prediction App")
     st.write("Enter the patient's medical details:")
+    
+    # ---------- INITIALISATION DU TABLEAU ----------
+    if "patients_data" not in st.session_state:
+        st.session_state.patients_data = []
         # Input fields for user data
     if "df" not in st.session_state:
         st.session_state.df = None
@@ -120,6 +129,10 @@ elif page == "🧠 Model":
     #load the trained model
     with open('random_forest_model.pkl', 'rb') as file:
         model = pickle.load(file)
+        
+        
+    
+    
     # Input fields for user data
     col1,col2=st.columns(2)
     with col1:
@@ -146,11 +159,48 @@ elif page == "🧠 Model":
     #display the input data
     st.subheader("Input Data")
     st.write(input_data)
+    
+    #add import features
+    st.subheader("Important Features for Diabetes")
+    importances = model.feature_importances_
+    features=input_data.columns
+    #crete a dataframe for feature importance
+    feature_importance_df = pd.DataFrame ({
+        'Feature': features,
+        'Importance': importances
+    }).sort_values(by='Importance', ascending=False)
+    
+    with st.expander("👩🏻‍⚕️Important Features"):
+        fig_importance = px.bar(
+            feature_importance_df,
+            x='Importance',
+            y='Feature',
+            orientation='h',
+            title='Feature Importance',
+            color='Importance',
+            color_continuous_scale='Viridis')
+        st.plotly_chart(fig_importance)
+    
+    
     # Make prediction
     if st.button("Predict"):
         prediction = model.predict(input_data)
         prediction_proba = model.predict_proba(input_data)
         
+    # ✅ Sauvegarder les valeurs saisies dans la session
+        st.session_state.patients_data.append({
+        "Pregnancies": Preg,
+        "Glucose": glucose,
+        "BloodPressure": bp,
+        "SkinThickness": skin,
+        "Insulin": insulin,
+        "BMI": bmi,
+        "DiabetesPedigreeFunction": dpf,
+        "Age": age,
+        "Prediction": "Diabetic" if prediction[0] == 1 else "Non-Diabetic",
+        "Probability": round(float(prediction_proba[0][1]), 3)
+    })
+
         # Display results
         st.subheader("Prediction Result")
         if prediction[0] == 1:
@@ -172,10 +222,18 @@ elif page == "🧠 Model":
             st.warning("Moderate Risk of Diabetes")
         else:
             st.error("High Risk of Diabetes")
+    # ---------- AFFICHER L’HISTORIQUE ----------
+    if len(st.session_state.patients_data) > 0:
+        st.subheader("🧾 Patients History")
+        df_history = pd.DataFrame(st.session_state.patients_data)
+        st.dataframe(df_history)
 
+     # Bouton pour tout effacer
+    if st.button("🗑️ Clear All History"):
+        st.session_state.patients_data = []
+        st.rerun()
     
-    
-    
+
         
     
     
